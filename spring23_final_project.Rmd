@@ -1,0 +1,1467 @@
+---
+title: "Data 606 and Data 607 Final Project"
+author: "Kayleah Griffen"
+date: "4/16/2023"
+output:
+  html_document:
+    theme: cosmo
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+### Franklin Communuty Center
+
+The Franklin Community Center is a non-profit organization dedicated to helping individuals and families in Saratoga county. One of the main services they provide to the community is a food pantry. One need the food pantry has is to understand the demographics they are serving and how these change over time. One challenge that the food pantry faces is predicting demand for their services.
+
+### Food Pantry Demographics
+
+When on-boarding a family or individual, called a case, into the Food Pantry database system certain demographic factors are collected. In every case, the household size and ages of people in the household are collected. Other demographic factors such as race, gender, and income level are collected for anywhere between half or less of the cases. While it is unfortunate that we do not have all of the demographic data for every case, what has been collected can be used.
+
+### Food pantry use and unemployment in New York State
+
+In "Relation between annual trends in food pantry use and long-term unemployment in New York State, 2002-2012" the study conductors concluded that there is a strong correlation between food pantry use and long-term unemployment in New York State. The New York State Department of Labor collects unemployment statistics dating back to 1976 for New York State data and 1990 for county level data. The Capital Region Economic Dashboard displays county level data from the New York State Department of Labor on unemployment rates. As previously mentioned a challenge the food pantry faces is predicting the demand for their services, by using the data provided by New York State a study can be conducted to understand if for the Franklin Community Center there is a correlation between food pantry use and county unemployment rates.
+
+### Data 606 and 607 Project Requirements 
+
+This work fulfills the final project requirements for Data 606 and Data 607. 
+
+For Data 607 the requirements are that:
+
+- The proposal describes the motivation for performing this analysis
+- The proposal describes likely data sources
+- The project has a recognizable “data science workflow” 
+- The project includes data from at least two different types of data sources
+- The project includes at least one data transformation operation
+- The project includes at least one statistical analysis and at least one graphics that describes or validates your data
+- The project includes at least one graphic that supports the conclusion(s)
+- The project includes at least one statistical analysis that supports the conclusion(s)
+- The project includes at least one feature that was not covered in class
+
+
+For Data 606 the main requirements are that:
+
+- There is an abstract that is less than 300 words, free of grammatical errors, summarizes the analysis conducted, has a conclusion and implications
+- The research question is clearly stated, can be answered by the data, and the context of the problem clearly explained
+- The dependent and independent variables are clearly described
+- Summary statistics are included
+- Appropriate, well-labeled, accurate displays (graphs and tables) of the data are included
+- The appropriate statistical test(s) were used for the data and the interpretation was clear
+- The conclusion includes a clear answer to the statistical question that is consistent with the data analysis and the method of data collection
+- The conclusion includes why the analysis is important and any limitations to the analysis
+
+### Abstract
+
+The Franklin Community Center is a non-profit organization dedicated to helping individuals and families in Saratoga county. One of the main services they provide to the community is a food pantry. One need the food pantry has is to understand the demographics they are serving and how these change over time. One challenge that the food pantry faces is predicting demand for their services. Through a collaboration with the Franklin Community Center staff and the Oasis Database team, two types of data were obtained – a file containing each case (individual/family) number and demographic information for that case and a file containing each time assistance was given along with the case number. Using this data descriptive graphs were generated to help the food pantry understand the demographics they are serving. None of the demographic factors analyzed (household size, age, gender, race, or income) were found to be correlated with food pantry usage. The demographics also appear to not change with time. In terms of predicting demand, an analysis was done to see if food pantry demand for Saratoga county cases was correlated to monthly unemployment rates in Saratoga (using data from the NYS Department of Labor). A relationship was found between unemployment rate, the date and food pantry usage. This work represents a starting point for a collaboration with the Franklin Community Center and will be reviewed with them so that it can be improved upon to better serve their data analysis needs.
+
+### Research Question
+
+My research question is centered on understanding the demographics using and predicting demand for the Franklin Community Center Food pantry. 
+
+1) Are any demographic factors correlated with food pantry usage? 
+
+2) Is the unemployment rate in Saratoga county correlated with the demand for food pantry services?
+
+These research questions were shaped by working with the Franklin Community Center to identify what research would be helpful to them. They stated that a report showing the food pantry use over time by demographic would be useful, as well as a model to predict food pantry demand. While conducting preliminary research I read an article "Relation Between Annual Trends in Food Pantry Use and Long-Term Unemployment in New York State, 2002–2012" which shows how Long-Term Unemployment is related to Food Pantry Demand. Other nonprofits, such as Feeding America, have their own models for predicting demand but these are dependent on several predictors and for my research I would like to see if one indicator can be used to predict demand.
+
+### Dependent Variable
+
+The response variable is how much assistance was provided, described using a ratio of how many times assistance was provided divided by how many days the case had been in the system starting from the first day they received assistance. 
+
+### Independent Variable(s)
+
+The independent variables are the demographic information available about the cases such as income, race/ethnicity, household size, age, gender, government benefits received, education, employment status, and marital status. As a result of the way intakes are done at the Franklin Community Center - in several cases there is missing data.
+
+## Data Tidying and Transforming
+
+First, load the required R packages.
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+library(ggthemes)
+# library(extrafont)
+library("RColorBrewer")
+library(kableExtra)
+```
+
+### Load the data
+
+The data was collected from the Franklin Community Center and the NYS Department of Labor then stored on github to be loaded in for data munging and analysis. 
+
+```{r}
+# load the assistance data
+# Franklin Community Center
+ # df_assistance <- read.csv("C:/Users/kgriffen/Downloads/15132_assistance_report_03-21-2023.csv", skip=33)
+df_assistance <- read.csv("https://github.com/klgriffen96/spring23_franklin/blob/main/15132_assistance_report_03-21-2023.csv?raw=true", skip=33)
+
+# load the household case data
+# Franklin Community Center
+# df_case <- read.csv("C:/Users/kgriffen/Downloads/15015_households_report_03-16-2023.csv", skip=4)
+df_case <- read.csv("https://raw.githubusercontent.com/klgriffen96/spring23_franklin/main/15015_households_report_03-16-2023.csv", skip=4)
+
+# load the NYS department of labor data
+# # https://dol.ny.gov/local-area-unemployment-statistics
+# df_unemployment <- read.csv("C:/Users/kgriffen/Downloads/nys_dol_unemployment.csv", encoding="UTF-8")
+df_unemployment <- read.csv("https://github.com/klgriffen96/spring23_franklin/blob/main/nys_dol_unemployment.csv?raw=true", encoding="UTF-8")
+
+```
+
+### Data cleaning
+
+There were several misspellings that I identified in the City and County fields, this section corrects those errors.
+
+```{r}
+# First, need to clean up the city data
+df_case$City <- tolower(df_case$City)
+
+# There are multiple misspellings/abbreviations for saratoga springs, south glens falls, fort edward, mechanicville, edinburgh
+
+df_case$City <- ifelse(df_case$City %in% c("saratpga springs", 
+                                 "saratoga sprinfs", 
+                                 "sara",
+                                 "sartoga springs",
+                                 "saratoga spring",
+                                 "saratoga springs?",
+                                 "saatoga springs",
+                                 "saratoga"), 
+                  "saratoga springs",
+                  df_case$City)
+
+
+df_case$City <- ifelse(df_case$City %in% c("balllston spa"), 
+                  "ballston spa",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("edinbur", "edinburg"), 
+                  "edinburgh",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("ft edward", "ft. edward"), 
+                  "fort edward",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("gansevoort,"), 
+                  "gansevoort",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("lake luzurne"), 
+                  "lake luzerne",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("mechanicvile"), 
+                  "mechanicville",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("middlegrove"), 
+                  "middle grove",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("porter corner"), 
+                  "porter corners",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("s. glens falls", "so. glens falls"), 
+                  "south glens falls",
+                  df_case$City)
+
+df_case$City <- ifelse(df_case$City %in% c("schuylervill", 
+                                 "schylerville",
+                                 "schyulerville",
+                                 "sch"), 
+                  "schuylerville",
+                  df_case$City)
+
+#Another issue with the current data, is for the same City sometimes a different County is selected. This needs to be corrected.
+
+df_case$County <- ifelse(df_case$City %in% c("albany"), 
+                  "Albany",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("amsterdam"), 
+                  "Montgomery",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("ballston spa"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("broadalbin"), 
+                  "Fulton",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("cambridge"), 
+                  "Washington",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("clifton park"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("corinth"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("fort ann"), 
+                  "Washington",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("fort edward"), 
+                  "Washington",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("gansevoort"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("glens falls"), 
+                  "Warren",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("granville"), 
+                  "Washington",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("greenfield"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("greenfield center"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("greenwich"), 
+                  "Washington",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("halfmoon"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("porter corners"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("queensbury"), 
+                  "Warren",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("salem"), 
+                  "Washington",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("saratoga springs"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("schenectady"), 
+                  "Schenectady",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("scotia"), 
+                  "Schenectady",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("stillwater"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("south glens falls"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("troy"), 
+                  "Rensselaer",
+                  df_case$County)
+
+df_case$County <- ifelse(df_case$City %in% c("wilton"), 
+                  "Saratoga",
+                  df_case$County)
+
+df_case$County <- ifelse((df_case$City %in% c("") & df_case$County  %in% c("", "Other")), 
+                  "Other",
+                  df_case$County)
+```
+
+
+Going forward, rather than correcting by hand all of the City and County information, I would attempt to use the `fuzzyjoin` package which can join based on a "distance" between words.
+
+### Data tidying and transforming
+
+In the cases data (the `df_case` dataframe), there is one row for every case that includes all of the demographic factors for that case. There are 305 columns that cover several categories, with the data being in a wide format. The categories that can be broken out are age, language, gender, race/ethnicity, government benefits, education, marital status, benefits received, veteran status, transportation to the pantry, poverty level, most accessible pantry, LGBTQIA status. While these categories are present, when a case/household is onboarded not all of the information is actually filled out. Additionally the data format is challenging in that for some categories, a person can only fall into one category and in others they can fall into multiple.
+
+To clean up this data, I will transform the data from wide to long format, rather than being several columns for demographic factors I will have a column for case, main_category, sub_category, and value. For example the Case will be the case number, the main_category could be gender, the sub_category could be male and the value would be the number of males. The disadvantage of this format is that every case now will have multiple rows, but the benefit is that it can be easily filtered.
+
+```{r}
+
+df_case_age <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Cases.."))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "([A-Za-z]+)\\.\\.(.+)") 
+
+df_case_age <- df_case_age |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+df_case_gender <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Identified.Gender"))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "([A-Za-z]+\\.[A-Za-z]+)\\.(.+)")
+
+df_case_gender <- df_case_gender |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+df_case_race <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Race.Ethnicity..Keep.."))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Race\\.Ethnicity)\\.\\.Keep\\.\\.(.+)")
+
+df_case_race <- df_case_race |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value"))
+
+df_case_govbens <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Government.Benefits.Receives."))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Government\\.Benefits\\.Receives\\.)(.+)")
+
+df_case_govbens <- df_case_govbens |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value"))
+
+df_case_emp <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Employment."))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Employment\\.)(.+)")
+
+df_case_emp <- df_case_emp |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value"))
+
+df_case_support <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Do.you.receive.the.following"))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Do\\.you\\.receive\\.the\\.following)\\.\\.(.+)")
+
+df_case_support <- df_case_support |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+
+df_case_other <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Other."))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Other)\\.(.+)")
+
+df_case_other <- df_case_other |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+df_case_transport <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "How.did.you.get.to.the.pantry"))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(How\\.did\\.you\\.get\\.to\\.the\\.pantry)\\.\\.(.+)")
+
+df_case_transport <- df_case_transport |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+df_case_poverty <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Poverty.Level...Franklin.."))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Poverty\\.Level\\.\\.\\.Franklin)\\.(.+)")
+
+df_case_poverty <- df_case_poverty |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+df_case_lgbtqia <- df_case |> pivot_longer(
+  cols = colnames(df_case)[(str_detect(colnames(df_case), "Do.you.identify.as.LGBTQIA"))],
+  names_to = c("main_category", "sub_category"),
+  names_pattern = "(Do\\.you\\.identify\\.as\\.LGBTQIA\\.\\.\\.)(.+)")
+
+df_case_lgbtqia <- df_case_lgbtqia |> select(c("Case..", 
+                                       "main_category", 
+                                       "sub_category",
+                                       "value")) 
+
+
+df_case_long <- rbind(df_case_age, 
+                      df_case_gender,
+                      df_case_race,
+                      df_case_govbens,
+                      df_case_emp,
+                      df_case_support,
+                      df_case_other,
+                      df_case_transport,
+                      df_case_poverty,
+                      df_case_lgbtqia)
+```
+
+Next I will transform the remaining relevant data into the above format.
+
+```{r}
+df_case_more_dem <- df_case |> select(c("Case..", "City", "State", "Zip.code", "County"))
+
+df_case_more_dem$Zip.code <- as.character(df_case_more_dem$Zip.code)
+
+df_case_more_dem <- df_case_more_dem |> pivot_longer(
+  cols = !`Case..`,
+  names_to = c("sub_category"))
+
+df_case_more_dem <- df_case_more_dem |> mutate(main_category = "location")
+
+df_case_size <- df_case |> select(c("Case..", "Household.size"))
+
+df_case_size$Household.size <- as.character(df_case_size$Household.size)
+
+df_case_size <- df_case_size |> pivot_longer(
+  cols = !`Case..`,
+  names_to = c("sub_category"))
+
+df_case_size <- df_case_size |> mutate(main_category = "household_size")
+```
+
+Now that the additional information is also prepared in long format it can be bound to the long dataframe.
+
+```{r}
+df_case_long <- rbind(df_case_long, 
+                      df_case_size,
+                      df_case_more_dem)
+```
+
+The assistance report has 143 columns of data, several of which are redundant with the case/household data. For the assistance report, the information that we want pulled is just the case number, the assistance date, and the assistance category, the amount and the unit. This data will help us get a picture of the frequency and time period each case/household was receiving assistance along with what types and how much of assistance they are receiving. 
+
+```{r}
+
+df_assistance <- df_assistance |> select(c("Case..",
+                                           "Entry.Date",
+                                           "Assistance.Date",
+                                           "Assistance.Category",
+                                           "Amount",
+                                           "Unit"))
+```
+
+The entry date and the assistance date are obviously both dates so the `lubridate` package in `tidyverse` can help transform them into being represented as dates in R.
+
+```{r}
+
+df_assistance$Entry.Date <- mdy(str_extract(df_assistance$Entry.Date, "[:digit:]+\\/[:digit:]+\\/[:digit:]+"))
+
+df_assistance$Assistance.Date <- mdy(str_extract(df_assistance$Assistance.Date, "[:digit:]+\\/[:digit:]+\\/[:digit:]+"))
+
+```
+
+Additionally, the month and year columns from `df_unemployment` can be converted into a date with `lubridate`.
+
+```{r}
+df_unemployment <- df_unemployment |> mutate(date = 
+                                               mdy(paste0(df_unemployment$Month
+                                                          , "/01/", 
+                                                          df_unemployment$Year)
+                                                   )
+                                            )
+```
+
+Also, the unemployment rate can be converted into a float rather than character representation.
+
+```{r}
+df_unemployment <- df_unemployment |> mutate(unemployment_double = 
+                                               as.double(str_extract(Unemployment.Rate,
+                                                           "(\\d+\\.\\d+)"))
+                                            )
+```
+
+
+## Data Analysis 
+
+Now that the data is cleaned and in a convenient to use format, summary statistics can be computed, visualizations can be created and an analysis can be conducted. 
+
+### Summary statistics
+
+First, based on the `df_case_long` we can get an idea of the counts for each sub-category. This will help me better understand where there are cases of missing data. The following tables showcase the different categories saved.
+
+```{r}
+# county # always filled
+df_temp <- df_case_long |> filter(main_category == "location" & 
+                         sub_category == "County") |>
+                group_by(value) |>
+                summarise(count = n())
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# age # always filled
+df_temp <- df_case_long |> filter(main_category == "Cases") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+kable(df_temp[2:6,])  |>
+  kable_styling("striped")
+sum(df_temp[2:6,]$count) 
+
+# household size # always filled
+df_temp <- df_case_long |> filter(main_category == "household_size") |>
+                group_by(sub_category, value) |>
+                summarise(count = sum(as.integer(value))) |>
+                arrange(as.integer(value))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# gender # most of time filled
+df_temp <- df_case_long |> filter(main_category == "Identified.Gender") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# race # most of time filled
+df_temp <- df_case_long |> filter(main_category == "Race.Ethnicity") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# employment # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "Employment.") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# gov benefits # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "Government.Benefits.Receives.") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# lgbtqia # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "Do.you.identify.as.LGBTQIA...") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# poverty # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "Poverty.Level...Franklin") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# transportation # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "How.did.you.get.to.the.pantry") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# do you receive the following other benefits # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "Do.you.receive.the.following") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+# other (dems like homeless) # occasionally filled
+df_temp <- df_case_long |> filter(main_category == "Other") |>
+                group_by(sub_category) |>
+                summarise(count = sum(as.integer(value)))
+
+kable(df_temp)  |>
+  kable_styling("striped")
+sum(df_temp$count)
+
+```
+
+
+Based on the analysis above - it is clear that for many of the demographic fields, aside from age and household size, the information was not entered into the database. 
+
+### Data visualization
+
+#### Location Information
+
+Previously, with the same dataset - I created a few visualizations using the location information - I just wanted to include a reference to it here because I will use a couple of the visualizations in the final presentation:
+
+(1) rpubs: https://rpubs.com/klgriffen96/data607_tidyverse_create
+(2) github: https://github.com/klgriffen96/SPRING2023TIDYVERSE/blob/main/spring23_data607_tidyverse_kgriffen.Rmd
+
+#### Exploratory Data Analysis Meals Distributed by the Food Pantry
+
+For the visualizations, I will use themes from `ggthemes` (based on this tutorial https://github.com/abhimotgi/dataslice/blob/master/R/Make%20Attractive%20Graphs%20in%20R.R). 
+
+Now just get a very basic visualization of meals over time. This will show us the time period we have available and give us a basic idea of how much food was given out to each case. In the first pass when I did this there were a couple outliers - 948 meals and 6000 meals, so I removed disbursements over 250 meals when I created this graph and going forward in the analysis. Additionally, for this study the focus will be just on meal disbursements - which fall into the assistance category "1 Trad. Pantry: 1. Traditional Pantry".
+
+```{r}
+
+df_assistance |> 
+  filter(Assistance.Category == "1 Trad. Pantry: 1. Traditional Pantry") |>
+  filter(Amount > 250) 
+  
+df_assistance <- df_assistance |> 
+  filter(Assistance.Category == "1 Trad. Pantry: 1. Traditional Pantry") |>
+  filter(Amount < 250)
+
+df_assistance |> 
+  ggplot(aes(x = Assistance.Date, y = Amount)) + 
+  geom_jitter() + 
+  labs(title = "Meals Distributed from Food Pantry", 
+       subtitle = "A look at meals distributed by the Franklin Community Center",
+       x = "Date",
+       y = "Amount of Meals") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text()) 
+  
+
+```
+
+Next I can do a grouping by month (excluding 2023 because it is not complete) to see if any month stands out in particular.
+
+```{r}
+df_month <- df_assistance |>
+  filter(year(Assistance.Date) != 2023) |>
+  group_by(month(Assistance.Date)) |>
+  summarise(count = sum(Amount))
+
+df_month|>
+  ggplot(aes(x = `month(Assistance.Date)`, y =count, fill = `month(Assistance.Date)`)) + 
+  geom_col() + 
+  labs(title = "Meals Distributed from Food Pantry", 
+       subtitle = "A look at meals distributed by the Franklin Community Center",
+       x = "Month",
+       y = "Total Amount of Meals (all years)") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none") + scale_x_continuous(
+  breaks = c(1, 6, 12),
+  label = c("Jan", "June", "Dec")
+)
+  
+```
+
+
+It is interesting that December is the lowest month - possibly because other organizations are offering more help during that time. Aside from that winter months (Jan, March) seem to demand more resources from the pantry.
+
+Now I can take a more detailed look at the total amount of meals monthly, by year, rather than aggregated.
+
+```{r}
+df_month_year <- df_assistance |> 
+  filter(year(Assistance.Date) != 2023) |>
+  group_by(date = floor_date(Assistance.Date, "month")) |>
+  summarize(meal_total = sum(Amount))
+
+df_month_year|>
+  ggplot(aes(x = date, y = meal_total, fill = date)) + 
+  geom_col() + 
+  labs(title = "Meals Distributed from Food Pantry", 
+       subtitle = "A look at meals distributed by the Franklin Community Center",
+       x = "Year (grouped by Month)",
+       y = "Total Amount of Meals") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none") 
+
+```
+
+
+Take another look, but this time compare each month to eachother.
+
+
+```{r}
+df_month_year <- df_month_year |> mutate(month = month(date),
+                        year = year(date),
+                        month_name = month(date, label = TRUE, abbr = FALSE))
+
+
+df_month_year|>
+  ggplot() + 
+  geom_col(aes(x = month_name, y = meal_total, fill = year), position = "dodge2") + 
+  labs(title = "Meals Distributed from Food Pantry", 
+       subtitle = "January 2019 - December 2022",
+       x = "Month",
+       y = "Total Amount of Meals") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position="right",
+        legend.direction = "vertical")
+
+```
+
+
+
+An interesting check would be to see about the distribution of the assistance, in other words how many times each amount of meals (for example 12 meals) were delivered to a case.
+
+
+```{r}
+df_assistance |> 
+  ggplot(aes(x = Amount)) + 
+  geom_histogram(binwidth = 12) + 
+  labs(title = "Meals Quantities Distributed by the Food Pantry",
+       x = "Meal Quantity Distributed",
+       y = "Total Distributions") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none")
+
+```
+
+As expected there is a strong right skew to the data, that is because the assistance is bounded at 0 as a minimum and goes up from there. Most cases are given food for 3 meals a day for 4 days which is 12 meals total - which is why that bar is the highest.
+
+#### Food Pantry Usage and Demographic Data 
+
+The first research question is to understand what demographics are correlated to the food pantry usage. There are two demographic categories that were filled out for every case - household size and ages within the household.
+
+##### Demographic Data: Household Size
+
+First, get an idea about the size of households.
+
+```{r}
+df_household_size <- df_case_long |>
+                    filter(main_category == "household_size") |>
+                    filter(sub_category == "Household.size") 
+
+df_household_size$value <- as.integer(df_household_size$value)
+
+df_household_size |> 
+  ggplot(aes(x= value))+ 
+  geom_histogram(binwidth = 1)  + 
+  labs(title = "Number of Cases of Each Household Size",
+       x = "Household Size",
+       y = "Number of Cases Registered") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none")
+
+```
+
+I can take a look at household size and how it relates to the quantity of meals received.
+
+```{r}
+
+df_assistance_household <- df_assistance |> left_join(df_household_size, by = "Case..")
+
+df_assistance_household <- df_assistance_household |> filter(is.na(value) != TRUE)
+
+df_assistance_household |> ggplot(aes(x = value, y = Amount)) + 
+                  geom_jitter() +
+                  geom_smooth(method = "lm", formula = 'y ~ x')  + 
+                  labs(title = "Meals Quantity Distributed by Household Size",
+                       x = "Household Size",
+                       y = "Meals quantity distributed") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+```
+
+As expected, a larger household size results in more meals disbursed to that household.
+
+Diving in a littler deeper, I'd like to check out if the household size correlates to how many times assistance was received.
+
+```{r}
+
+df_size_a_count <- df_assistance_household |> group_by(Case.., value) |>
+                            summarise(count = n(), .groups = "drop_last")
+
+df_size_a_count |> ggplot(aes(x=value, y=count)) +
+                  geom_jitter() +
+                  geom_smooth(method = "lm", formula = 'y ~ x')  + 
+                  labs(title = "Quantity of times received assistance by Household Size",
+                       x = "Household Size",
+                       y = "Quantity of times received assistance") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+
+```
+
+
+Now, it is important to note that families were input into the system at different times - so above the graph was done based on how many times a case received assistance - but it may be more accurate to create a ratio showing how many times a case received assistance : the amount of time they were eligible to receive assistance.
+
+```{r}
+df_assistance_ratio <- df_assistance |> group_by(Case..) |>
+                summarise(first_date = min(Assistance.Date),
+                          last_date = max(Assistance.Date),
+                          count = n(),
+                          days_in_system = ymd("2023/03/16") - first_date,
+                          ratio = count/as.integer(days_in_system))
+
+```
+
+
+```{r, warning=FALSE}
+
+df_a_h <- df_assistance_ratio |> left_join(df_household_size, by = "Case..") |>
+          filter(ratio < 1)  |> # exclude person who joined day data was pulled 
+          filter(days_in_system > 0) 
+
+df_a_h |> ggplot(aes(x=value, y=ratio)) +
+                  geom_jitter() +
+                  geom_smooth(method = "lm", formula = 'y ~ x')  + 
+                  labs(title = "Received assistance ratio and Household Size",
+                       x = "Household Size",
+                       y = "Received assistance ratio") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+
+```
+
+There does not appear to be any trend between household size and the ratio of times that a case received assistance.
+
+Another interesting consideration is if any demographic data changes over time, I will check this with household size.
+
+```{r}
+
+df_assistance_household |> ggplot(aes(x = Assistance.Date, y = value)) + 
+                  geom_point() +
+                  geom_smooth(method = 'lm', formula = 'y ~ x')  + 
+                  labs(title = "Cases Receiving Assistance Household Size over Time",
+                       x = "Year",
+                       y = "Household Size") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+```
+
+It does not appear that household size changed with time. 
+
+##### Demographic Data: Age
+
+Now I can take a look at the age groups, first just looking at all of the cases registered and what ages are most common for all registered cases.
+
+```{r}
+df_age <- df_case_long |>
+                    filter(main_category == "Cases") 
+
+df_age$value <- as.integer(df_age$value)
+
+df_age |> 
+  group_by(sub_category) |>
+  summarise(total = sum(value)) |>
+  filter(sub_category != "0...17." & sub_category != "Unknown.Age.") |>
+  ggplot(aes(x= factor(sub_category, 
+             level = c("0...3.", "4...17.", "18...64.", "65..")),
+             y = total)) + 
+  geom_col()  + 
+  labs(title = "Number of Individuals by Age Group",
+       x = "Age Group",
+       y = "Number of Individuals Registered") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none")
+```
+
+As expected, the largest span age demographic (18-64) has the most individuals in it.
+
+Now I can take a look at which age group received the most assistance by joining the cases data with the assistance data.
+
+```{r}
+# join df_age with df_assistance 
+
+df_assistance_age <- df_assistance |> left_join(df_age, by = "Case..", multiple = "all")
+
+df_assistance_age <- df_assistance_age |>
+  filter(sub_category != "0...17."  & sub_category != "Unknown.Age.") |>
+  filter(value > 0) |>
+  group_by(sub_category) |>
+  summarise(total = n())
+  
+
+ df_assistance_age |> 
+  ggplot(aes(x= factor(sub_category, 
+             level = c("0...3.", "4...17.", "18...64.", "65..")),
+             y = total)) + 
+  geom_col() + 
+  labs(title = "Number of times Assistance Received by Age Group",
+       x = "Age Group",
+       y = "Total number of times Assistance Received") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none") 
+
+```
+
+This just shows the total amount of times each age group received assistance.
+
+Now I'd like to understand if a family is made up of more children, if they are more dependent on the food pantry.
+
+First, calculate the percent of children.
+
+```{r}
+df_age_wide <- df_age |> pivot_wider(names_from = sub_category,
+                      values_from = value)
+
+df_age_wide <- df_age_wide |> 
+              select(Case..,`0...17.` , `18...64.`, `65..`, `Unknown.Age.`) |>
+              mutate(p_children = `0...17.`/(`0...17.` + `18...64.` +  `65..` + `Unknown.Age.` ))
+```
+
+Now, similar to the household size I can join with assistance and group to get assistance counts with the percent of children.
+
+```{r, warning=FALSE}
+df_assistance_age_wide <- df_assistance |> left_join(df_age_wide, by = "Case..")
+
+
+df_size_a_count <- df_assistance_age_wide |> group_by(Case.., p_children) |>
+                            summarise(count = n(), .groups = "drop_last")
+
+df_size_a_count |> ggplot(aes(x=p_children, y=count)) +
+                  geom_jitter() +
+                  geom_smooth(method = "lm", formula = 'y ~ x') + 
+  labs(title = "Number of times case received assistance by Ratio Children",
+       x = "Ratio Children (Under 18)",
+       y = "Number of times case received assistance") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position = "none")
+
+```
+
+Based on this, it does not appear that children is correlated to food pantry usage.
+
+Last, look at the ratio a case received assistance by the percent of children.
+
+
+```{r, warning=FALSE}
+
+
+df_assistance_age_wide <- df_assistance_ratio |> left_join(df_age_wide, by = "Case..") |>
+          filter(ratio < 1)
+
+
+df_assistance_age_wide |> ggplot(aes(x=p_children, y=ratio)) +
+                  geom_jitter() +
+                  geom_smooth(method = "lm", formula = 'y ~ x') + 
+                  labs(title = "Received assistance ratio and Ratio Children",
+                       x = "Ratio Children (Under 18)",
+                       y = "Received assistance ratio") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+
+```
+
+Based on this analysis there does not appear to be a relationship between pantry usage and the percent of children in a family.
+
+Last check if age changed with time.
+
+```{r, warning=FALSE}
+
+df_assistance_age_wide2 <- df_assistance |> left_join(df_age_wide, by = "Case..") 
+
+df_assistance_age_wide2 |> ggplot(aes(x = Assistance.Date, y = p_children)) + 
+                  geom_point() +
+                  geom_smooth(method = 'lm', formula = 'y ~ x')  + 
+                  labs(title = "Cases Receiving Assistance Ratio Children over Time",
+                       x = "Year",
+                       y = "Ratio Children") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+```
+It looks like the average percent of children was around 20% and stayed that way.
+
+##### Demographic Data: Race/ Ethnicity 
+
+Aside from household size and age as demographic factors, other demographics were also included in the database - however when doing intakes not all of the demographic factors were actually filled into the database. In the cases where the demographic information was not filled out in the future I will put "NA" but for this portion of the analysis I will just use the households that did fill out Race information.
+
+First, just take a look at the number of people of each race registered in the Case database system.
+
+
+```{r}
+df_case_race <- df_case_long |> filter(main_category == "Race.Ethnicity") |>
+                  group_by(sub_category) |>
+                  summarise(total = sum(as.integer(value))) |>
+                  filter(total > 0) |>
+                  arrange(desc(total))
+                  
+
+df_case_race |> 
+  ggplot(aes(x = fct_reorder(sub_category, total), y = total)) + 
+  geom_col() + 
+  labs(title = "Counts of Each Race", 
+       x = "Race",
+       y = "Total Count") +
+  theme_fivethirtyeight() +
+  ylim(0,3500) +
+  theme(axis.title = element_text(),
+        axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position="none") +
+        geom_text(aes(label = total), vjust = -0.5)
+
+
+```
+
+
+Now I will take a look at how much each race received assistance by looking at the assistance ratio.
+
+```{r}
+df_case_race <- df_case_long |> filter(main_category == "Race.Ethnicity")
+
+df_assistance_race <- df_assistance_ratio |> left_join(df_case_race, 
+                                                       by = "Case..",
+                                                       multiple = "all") |>
+                        filter(as.integer(value) > 0)|>
+                        filter(ratio <1)
+
+
+df_assistance_race |> ggplot(aes(x=sub_category, y=ratio)) +
+                  geom_jitter() +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position="none") + 
+  labs(title = "Pantry Usage Rates by Race",
+       x = "Race",
+       y = "Pantry Usage Rate") 
+
+
+```
+
+From the visualization, it appears that not only are white people most represented in terms of the most prominent race but they also have higher rates of pantry usage then other demographics.
+
+##### Demographic Data: Gender 
+
+I can first take a look at the distribution of genders represented in the cases.
+
+```{r}
+df_gender <- df_case_long |>
+                    filter(main_category == "Identified.Gender") 
+
+df_gender$value <- as.integer(df_gender$value)
+
+df_gender |> 
+  group_by(sub_category) |>
+  summarise(total = sum(value)) |>
+  filter(sub_category != "Prefer.to.self.describe..List.under.other.") |>
+  ggplot(aes(x= sub_category,
+             y = total)) + 
+  geom_col()  + 
+  labs(title = "Number of Individuals by Gender Group",
+       x = "Gender Group",
+       y = "Number of Individuals Registered") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position="none") +
+        geom_text(aes(label = total), vjust = -0.5) +
+  ylim(0,5000)
+
+```
+
+
+Similar to the analysis of age where I created a percent of children in the household, for gender I will create a percent of females in the household.
+
+```{r, warning=FALSE}
+
+
+df_gender_wide <- df_gender |> pivot_wider(names_from = sub_category,
+                      values_from = value)
+
+df_gender_wide <- df_gender_wide |> 
+              mutate(p_female = `Female`/(`Female` + `Male`))
+
+
+df_assistance_gender_wide <- df_assistance_ratio |> left_join(df_gender_wide, by = "Case..") |>
+          filter(ratio < 1)
+
+
+df_assistance_gender_wide |> ggplot(aes(x=p_female, y=ratio)) +
+                  geom_jitter() +
+                  geom_smooth(method = "lm", formula = 'y ~ x') + 
+                  labs(title = "Received assistance ratio and Ratio Female",
+                       x = "Ratio Female",
+                       y = "Received assistance ratio") +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position = "none")
+
+```
+
+It appears that across different households female representation there is the same amount of assistance.
+
+##### Demographic Data: Income 
+
+The last demographic factor that I decided to look at is income. First, I can take a look at the income distributions.
+
+```{r}
+
+df_income <- df_case_long |>
+                    filter(main_category == "Poverty.Level...Franklin") 
+
+df_income$value <- as.integer(df_income$value)
+
+df_income <- df_income |> filter(value > 0)
+
+df_income |> 
+  group_by(sub_category) |>
+  summarise(count = n()) |>
+  ggplot(aes(x= factor(sub_category, 
+             level = c("Under..13000", 
+                       ".13000..23000", 
+                       ".23000..33000", 
+                       ".33000..43000",
+                       ".43000.and.above")),
+             y = count)) + 
+  geom_col()  + 
+  labs(title = "Number of Cases by Income Group",
+       x = "Income Group",
+       y = "Number of Cases Registered") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position="none")
+```
+
+
+Now I can take a look at income group and the ratio of pantry useage.
+
+```{r}
+
+df_assistance_income <- df_assistance_ratio |> left_join(df_income, 
+                                                       by = "Case..",
+                                                       multiple = "all") |>
+                        filter(as.integer(value) > 0)|>
+                        filter(ratio <1)
+
+
+df_assistance_income |> ggplot(aes(x= factor(sub_category, 
+                                   level = c("Under..13000", 
+                                             ".13000..23000", 
+                                             ".23000..33000", 
+                                             ".33000..43000",
+                                             ".43000.and.above")),
+                                   y = ratio)) +
+                  geom_jitter() +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        axis.text.x = element_text(angle = 60, hjust = 1),
+        legend.position="none") + 
+  labs(title = "Pantry Usage Rates by Income",
+       x = "Income Group",
+       y = "Pantry Usage Rate") 
+```
+
+
+#### Multiple Regression Household Size, Age, Race, Gender Income
+
+Now that we have explored all of the different demographics, even though individually none of them seemed to predict food pantry demand, we can still further the analysis by checking if them all together predict food panty demand in any way.
+
+The unit of analysis is a case, each case should have a pantry usage ratio, along with demographic factors for household size, age, race, gender and income.
+
+We already have collapsed down the df_assistance dataframe into `df_assistance_ratio`, one row per case and contains their pantry usage ratio. Now I need to create a column for each demographic factor. I already have for household size, age and gender a datarfame in the format of unique cases.
+
+First I will bring in household size.
+
+```{r}
+df_household_size <- df_household_size |> select("Case..", "value")
+
+df_multiple <- df_assistance_ratio |> left_join(df_household_size, by = "Case..")
+
+df_multiple <- df_multiple |> rename("household_size" = "value")
+
+```
+
+Next I will bring in the percent of children.
+
+```{r}
+
+df_age_wide <- df_age_wide |> select("Case..", "p_children")
+
+df_multiple <- df_multiple |> left_join(df_age_wide, by = "Case..")
+
+```
+
+Next I will bring in the percent of female identifying by case.
+
+```{r}
+
+df_gender_wide <- df_gender_wide |> select("Case..", "p_female")
+
+df_multiple <- df_multiple |> left_join(df_gender_wide, by = "Case..")
+
+```
+
+Next I will bring in race. I will create a variable percent white.
+
+```{r}
+df_case_race <- df_case_long |> filter(main_category == "Race.Ethnicity")
+
+df_case_race$value <- as.integer(df_case_race$value)
+
+df_case_race_wide <- df_case_race |> pivot_wider(names_from = sub_category,
+                      values_from = value)
+
+# advice from https://www.statology.org/dplyr-sum-across-columns/
+df_case_race_wide <- df_case_race_wide |> mutate(sum = rowSums(across(where(is.numeric)), na.rm=TRUE),
+                                                 p_white = `White` / sum)
+
+df_case_race_wide <- df_case_race_wide |> select("Case..", "p_white")
+
+df_multiple <- df_multiple |> left_join(df_case_race_wide, by = "Case..")
+
+```
+
+Last I will bring in poverty level. This will be a categorical variable.
+
+```{r}
+
+dim(df_income)[1] == length(unique(df_income$Case..))
+
+df_income <- df_income |> select("Case..", "sub_category")
+
+df_multiple <- df_multiple |> left_join(df_income, by = "Case..")
+
+df_multiple <- df_multiple |> rename("income" = "sub_category")
+
+
+```
+
+Now the multiple regression can be run.
+
+```{r}
+# Stack overflow to remove infinite
+# https://stackoverflow.com/questions/12188509/cleaning-inf-values-from-an-r-dataframe
+
+df_multiple <- do.call(data.frame,lapply(df_multiple, function(x) replace(x, is.infinite(x),NA)))
+
+m_um <- lm(ratio ~ household_size  + p_children  + p_female + p_white + income, data = df_multiple)
+summary(m_um)
+
+```
+
+None of the variables have a p value less than 0.05 and the R squared is extremely low - this model is not viable. If there was significant p values or a high R squared I would go further and check residuals for linearity and normality but because this model is not useful anyways I will not do that.
+
+#### Unemployment Rate and Food Pantry Demand - Inferential Statistics
+
+The second research question is to understand if the unemployment rate is correlated with the food pantry demand. Specifically, I will look at Saratoga county as Saratoga county has the highest representation in the dataset.
+
+First, just get the case numbers with the county data.
+
+```{r}
+df_county <- df_case_long |>
+                filter(main_category == "location") |>
+                filter(sub_category == "County") 
+
+```
+
+Next, join the case location information into the df_assistance data.
+
+```{r}
+df_assistance_county <- df_assistance |> left_join(df_county, by = "Case..")
+
+```
+
+Next get just the total amount of meals distributed in Saratoga county by month.
+
+```{r}
+# Get the groupings by year/month and the number of 
+
+df_a_total <- df_assistance_county |>
+  filter(value == "Saratoga") |>
+  group_by(date = floor_date(Assistance.Date, "month")) |>
+  summarize(meal_total = sum(Amount))
+
+head(df_a_total)
+```
+
+Next join the Saratoga county monthly assistance data with the Saratoga county unemployment data.
+
+```{r}
+# Now the data can be joined together with the unemployment data 
+df_unemployment_saratoga <- df_unemployment |> filter(Area.Name == 
+                                                        "Saratoga County")
+
+df_meals_unemp <- df_a_total |> left_join(df_unemployment_saratoga, by = "date")
+
+
+```
+
+Take a look at both unemployment and food pantry demand over time.
+
+```{r}
+df_meals_unemp |> ggplot(aes(x = date, y = meal_total)) + 
+                  geom_point() +
+                  geom_smooth(method = 'loess', formula = 'y ~ x')  +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position="none") + 
+                  labs(title = "Monthly Meal Totals",
+                       x = "Year",
+                       y = "Monthly Meal total") 
+
+```
+
+
+The shape of the data is a general negative trend followed by a positive trend.
+
+```{r, warning=FALSE}
+df_meals_unemp |> ggplot(aes(x = date, y = unemployment_double)) + 
+                  geom_point() +
+                  geom_smooth(method = 'loess', formula = 'y ~ x') +
+                  theme_fivethirtyeight() +
+                  theme(axis.title = element_text(),
+                        legend.position="none") + 
+                  labs(title = "Monthly Unemployment",
+                       x = "Year",
+                       y = "Unemployment Rate") 
+
+```
+
+
+The unemployment is fairly level, except during COVID it peaked heavily.
+
+My work will create two models, one which uses unemployment rate and date and correlates it with meal total and another model which creates a categorical variable to replace date which is just COIVD status.
+
+The first model can be created.
+
+```{r}
+m_um1 <- lm(meal_total ~ unemployment_double + date, data = df_meals_unemp)
+summary(m_um1)
+```
+
+Based on this model, the unemployment date and the date are both significant predictors of food pantry demand.
+
+Another possibly way to simplify the analysis would be to simplify the date into a categorical variable with three levels, pre-covid, during-covid, and post-covid.
+
+```{r}
+## TODO: make categorical and use it ##
+
+df_meals_unemp$covid_status <- "covid_status" # just a temp variable
+
+df_meals_unemp$covid_status[(df_meals_unemp$date < ymd("2020/04/01"))] <- "pre_covid"
+
+df_meals_unemp$covid_status[(df_meals_unemp$date < ymd("2020/10/01")) &
+                              (df_meals_unemp$date >= ymd("2020/04/01"))] <- "covid"
+
+df_meals_unemp$covid_status[(df_meals_unemp$date >= ymd("2020/10/01"))] <- "post_covid"
+
+m_um2 <- lm(meal_total ~ unemployment_double + covid_status, data = df_meals_unemp)
+summary(m_um2)
+
+```
+
+While the adjusted R-squared is improved compared to the first model, unemployment doubles p-value went up and it because not a significant predictor of meal total.
+
+When generating a multiple regression model, the conditions of linearity as well as nearly normal residuals and constant variability need to be met. I will now check both models for these conditions.
+
+The residuals can be checked for linearity for the first model.
+
+```{r}
+
+ggplot(data = m_um1, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position="none") + 
+  labs(title = "Residuals Linearity Check",
+       x = "Fitted values",
+       y = "Residual") 
+```
+
+There does seem to be about the same number of points distributed above and below the line. There does not appear to be a signifigant trend to the residual data.
+
+The residuals can also be checked for the second model.
+
+```{r}
+
+ggplot(data = m_um2, aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position="none") + 
+  labs(title = "Residuals Linearity Check",
+       x = "Fitted values",
+       y = "Residual") 
+```
+
+There is a clear separation in the residuals - I would say this fails to meet the linear condition for residuals.
+
+Next, the residuals have to be checked for being nearly normal.
+
+First for the first model.
+
+```{r}
+ggplot(data = m_um1, aes(x = .resid)) +
+  geom_histogram(binwidth=500) +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position="none") + 
+  labs(title = "Residuals Normality Check",
+       x = "Residual") 
+```
+
+The data looks fairly normal with some exceptions.
+
+Now for the second model.
+
+```{r}
+ggplot(data = m_um2, aes(x = .resid)) +
+  geom_histogram(binwidth=500) +
+  theme_fivethirtyeight() +
+  theme(axis.title = element_text(),
+        legend.position="none") + 
+  labs(title = "Residuals Normality Check",
+       x = "Residual") 
+```
+
+
+This does not appear normally distributed.
+
+Based on the conditions of linearity and normality, the first model - with the date - rather than the second model - with the covid status - is a better fit for a multiple regression model even though the R squared is lower.
+
+Now, going back to the model.
+
+```{r}
+summary(m_um1)
+
+```
+
+Now to interpret this model, holding the date the same, if the unemployment rate is larger than the meal_total is less. This is the opposite of what my assumption was - which would have been higher unemployment would correlate with higher food pantry demand. But based on the two descriptive plots it does seem that there is a negative relationship between unemployment rates and food pantry demand. 
+
+## Conclusion 
+
+In conclusion, several graphs were generated to help give the Franklin Community Center food pantry a better idea of the demographics they are serving. Two multiple regression models were created - one to understand if demographic factors are correlated to food pantry usage and another to understand if demand for food pantry services is correlated with unemployment rates. In terms of demographic factors, no demographic factor was significantly correlated with food pantry usage. For unemployment rates, date and food pantry usage, I did find a correlation. This report will be delivered to the food pantry and I will continue to work with them to help them with any data analysis needs they have. The limitations of this report are that for most of the demographic factors, the data was not collected. In creating this report I hope that it illustrates to the food pantry staff that collecting demographic information can be useful. In terms of the analysis I handled missing data with NAs but a future analysis could treat the missing data differently. 
+
+
